@@ -33,16 +33,28 @@ void Minigit::add(versionNode *vNode)
     if (inFile.is_open())
     {
         fileNode *temp = vNode->head;
-        //go to the last node of linked list
-        while (temp != NULL)
+        if (vNode->head == NULL) // if there is nothing in the linked list, add the first thing
         {
-            temp = temp->next;
+            fileNode *file = new fileNode;
+            file->fileName = filename;
+            vNode->head = file;
+            vNode->head->next = NULL;
+            cout << "Successfully added " << filename << "." << endl;
         }
-        //the head is now pointing to the file
-        fileNode *file = new fileNode;
-        file->fileName = filename;
-        temp->next = file;
-        file->fileName = filename + "00";
+        else
+        {
+            //go to the last node of linked list
+            while (temp->next != NULL)
+            {
+                temp = temp->next;
+            }
+            //the head is now pointing to the file
+            fileNode *file = new fileNode;
+            file->fileName = filename;
+            temp = file;
+            temp->next = NULL;
+            cout << "Successfully added " << filename << "." << endl;
+        }
     }
     else
     {
@@ -55,10 +67,10 @@ void Minigit::remove(versionNode *vNode)
     string input;
     cout << "What file do you want to remove?" << endl;
     cin >> input;
-    fileNode *prev = vNode->head->next;
-    fileNode *pres = vNode->head->next;
-    //traverse through linked list
-    while (pres->next != NULL)
+    fileNode *prev = vNode->head;
+    fileNode *pres = vNode->head;
+
+    while (pres != NULL)
     {
         //remove desired filename
         if (pres->fileName == input)
@@ -67,15 +79,12 @@ void Minigit::remove(versionNode *vNode)
             delete pres;
             pres = NULL;
             cout << "Deleted " << input << ". Bye bye bitch (T_T)" << endl;
+            return;
         }
         prev = pres;
         pres = pres->next;
     }
-    //cant find desired file
-    if (pres->next == NULL)
-    {
-        cout << "File not found. You stupid hoe." << endl;
-    }
+    cout << "File not found. You stupid hoe." << endl;
 }
 
 void Minigit::commit(versionNode *vNode)
