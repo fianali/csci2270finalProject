@@ -13,13 +13,12 @@ Minigit::Minigit()
     fs::create_directories(".minigit");
 }
 
-bool Minigit::init()
+void Minigit::init()
 {
     Minigit();
     versionNode *vNode = new versionNode;
     vNode->next = NULL;
     vNode->commitNumber = 0;
-    return true;
 }
 
 void Minigit::add(versionNode *vNode)
@@ -91,11 +90,9 @@ void Minigit::commit(versionNode *vNode)
 {
     if (vNode->commitNumber == 0) //everything gets committed
     {
-        fileNode *temp = vNode->head->next;
+        fileNode *temp = vNode->head;
         while (temp != NULL)
         {
-            ifstream inFile;
-
             temp = temp->next;
         }
     }
