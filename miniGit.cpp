@@ -50,8 +50,8 @@ void Minigit::add(versionNode *vNode)
             //the head is now pointing to the file
             fileNode *file = new fileNode;
             file->fileName = filename;
-            temp = file;
-            temp->next = NULL;
+            temp->next = file;
+            file->next = NULL;
             cout << "Successfully added " << filename << "." << endl;
         }
     }
@@ -86,8 +86,12 @@ void Minigit::remove(versionNode *vNode)
     cout << "File not found. You stupid hoe." << endl;
 }
 
+/*
+    detects if there has been a change between files of the same name 
+*/
 bool hasChanged(string pres, string prev)
 {
+    bool changed = false;
     ifstream inFile1;
     ifstream inFile2;
 
@@ -99,63 +103,58 @@ bool hasChanged(string pres, string prev)
     int count1 = 0;
     int count2 = 0;
 
-    //count the number of lines
-    while (getline(inFile1, line1))
+    if (inFile1.is_open() && inFile2.is_open())
     {
-        count1++;
-    }
-    while (getline(inFile2, line2))
-    {
-        count2++;
-    }
-    //different amount of lines -- txt files aren't the same
-    if (count1 != count2)
-    {
-        return true;
-    }
-    else
-    {
-        while (getline(inFile1, line1) && getline(inFile2, line2))
+        //count the number of lines
+        while (getline(inFile1, line1))
         {
-            if (line1 != line2)
+            count1++;
+        }
+        while (getline(inFile2, line2))
+        {
+            count2++;
+        }
+        //different amount of lines -- txt files aren't the same
+        if (count1 != count2)
+        {
+            return true;
+        }
+        else
+        {
+            while (getline(inFile1, line1) && getline(inFile2, line2))
             {
-                return true;
+                if (line1 != line2)
+                {
+                    return true;
+                }
             }
         }
     }
-    return false;
-}
-
-/*
-    this function updates the version number
-*/
-string fileNameUpdater(fileNode *file)
-{
-    string s = "";
-    int i = 0;
-    //find the underscore
-    while (file->fileName[i] != '_')
+    else
     {
-        s = s + file->fileName[i];
-        i++;
+        cout << "Cannot open files: " + pres + " , " + prev << endl;
     }
-    s = s + '_';
 
-    return file;
+    inFile1.close();
+    inFile2.close();
+
+    return false;
 }
 
 /*
     copies a a file into the .minigit directory
 */
-void copyFile(string file1, string file2)
+void copyFile(fileNode *fNode)
 {
+
+    string file1 = fNode->fileName;
     //read file to copy
     ifstream inFile;
     inFile.open(file1);
 
     //puts file into .minigit directory
     ofstream outFile;
-    string outFilename = ".minigit/" + file2;
+    string outFilename = ".minigit/" + fNode->fileVersion;
     outFile.open(outFilename);
 
     string line;
@@ -177,46 +176,151 @@ void copyFile(string file1, string file2)
     outFile.close();
 }
 
-void Minigit::commit(versionNode *vNode)
+/*
+    this function updates the version number
+*/
+void updateChangedFile(fileNode *file)
 {
-    if (vNode->commitNumber == 0)
-    {
-        fileNode *temp = vNode->head;
-        int count = 0;
+    bool saveFile = false;
 
-        //copy to new file
-        while (temp != NULL)
-        {
-            copyFile(temp->fileName, "00.txt");
-            temp = temp->next;
-        }
-    }
-    else
+    // if either of the files don't exist yet, don't bother checking for changes
+    if (file->fileName != "" && file->fileVersion != "" && hasChanged(file->fileName, ".minigit/" + file->fileVersion))
     {
-        versionNode *prev = vNode->previous;
-        fileNode *tempPres = vNode->head;
-        fileNode *tempPrev = prev->head;
-
-        //while (tempPrev !=)
+        file->version++;
+        saveFile = true; //file has changed, we want to save it
     }
 
-    // if (vNode->commitNumber == 0) //everything gets committed becuase there is no previous commit
-    // {
-    //     fileNode *temp = vNode->head;
-    //     //create and copy to new file
+    if (file->version == 0)
+    {
+        saveFile = true;
+    }
 
-    //     while (temp != NULL)
-    //     {
-    //         temp = temp->next;
-    //     }
-    // }
-    // else // must compare current stuff you want to commit to the past stuff
+    // initialize or update the filename to match the version number
+    if (file->fileName != "")
+    {
+        file->fileVersion = file->fileName + "__(~ ^_^)~" + to_string(file->version);
+    }
+
+    if (saveFile)
+    {
+        copyFile(file);
+    }
+
+    // Previous implementation
+    //
+    // string digits;
+    // int version;
+    // string s = "";
+    // int i = 0;
+    // //find the underscore
+    // while (file->fileName[i] != '_')
     // {
-    //     versionNode *past = vNode->previous;
-    //     fileNode
+    //     s = s + file->fileName[i];
+    //     i++;
     // }
+    // s = s + '_';
+    // //change into digit;
+    // digits = file->fileName.substr(s.length(), file->fileName.length() - 4);
+    // version = stoi(digits);
+    // version++;
+    // digits = to_string(version);
+    // s = s + digits + ".txt";
+    // return digits + ".txt";
 }
 
+void Minigit::commit(versionNode *vNode)
+{
+    versionNode *nextVNode = new versionNode;
+    nextVNode->commitNumber = (vNode->commitNumber) + 1;
+    vNode->next = nextVNode;
+    nextVNode->previous = vNode;
+
+    // let's write all of the files to the minigit folder
+    // after that, the nextVNode is already doubly-linked so we are done and can move on
+    fileNode *curr = vNode->head;
+    fileNode *future = nextVNode->head;
+
+    // write all files to ./.minigit/ with a 00 file-version number
+    while (curr != NULL)
+    {
+        updateChangedFile(curr);
+
+        // before moving on, copy the current fileNode to the next temporary Commit
+        future = new fileNode();
+        future->fileName = curr->fileName;
+        future->version = curr->version;
+        future->fileVersion = curr->fileVersion;
+
+        curr = curr->next;
+        future = future->next;
+    }
+
+    //     fileNode *temp = vNode->head;
+    //     fileNode *temp3 = new fileNode;
+    //     temp3 = temp;
+    //     nextVNode->head = temp3;
+
+    //     //copy to new file
+    //     while (temp != NULL)
+    //     {
+    //         fileNode *temp3 = new fileNode;
+    //         string abc = (temp->fileName).substr(0, (temp->fileName).length() - 4); //example: f1
+    //         //string str = updateChangedFile(temp);
+    //         copyFile(vNode, temp, abc + "00.txt"); //first commit will always be version 00
+    //         temp3 = temp;
+    //         temp3->fileVersion = abc + "00.txt";
+    //         temp3 = temp3->next;
+    //         temp = temp->next;
+    //     }
+    //     cout << "Your commit number is: " << vNode->commitNumber << endl;
+    //     //increment vNode after copying
+    //     vNode = nextVNode;
+
+    //     return;
+    // }
+
+    // versionNode *prev = vNode->previous;
+    // fileNode *tempPres = vNode->head;
+    // fileNode *tempPrev = prev->head;
+    // cout << "please" << endl;
+    // while (tempPres != NULL && tempPrev != NULL) // looping through each version node
+    // {
+    //     cout << "hi hoe" << endl;
+    //     //getting a string for the beginning of each fileNode to make sure we are comparing the same file
+    //     int i = 0;
+    //     string s = "";
+    //     string s2 = "";
+    //     while (tempPres->fileName[i] != '_')
+    //     {
+    //         s = s + tempPres->fileName[i];
+    //         i++;
+    //     }
+    //     s = s + '_';
+    //     while (tempPrev->fileName[i] != '_')
+    //     {
+    //         s = s + tempPrev->fileName[i];
+    //         i++;
+    //     }
+    //     s2 = s2 + '_';
+    //     if (s == s2)
+    //     {
+    //         if (hasChanged(tempPrev->fileName, tempPres->fileName) == true)
+    //         {
+    //             cout << "hi hoe" << endl;
+    //             string str = updateChangedFile(tempPres);
+
+    //             copyFile(vNode, tempPres, str);
+    //             //rename
+    //             //thoughts: convert the versionnumber as a digit, increment the number by 1
+    //             //then convert it back into a string and update the versionnumber
+    //         }
+    //     }
+
+    //     tempPrev = tempPrev->next;
+    //     tempPres = tempPres->next;
+    // }
+    // vNode = nextVNode;
+}
 void Minigit::checkOut(fileNode *file)
 {
 }
