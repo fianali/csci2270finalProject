@@ -9,8 +9,9 @@ using namespace std;
 struct fileNode
 {
     string fileName;    // Name of local file
-    string fileVersion; //name of file in miniGit folder
-    fileNode *next;
+    int version;        // version number of the file
+    string fileVersion; // name of file in miniGit folder
+    fileNode *next;     // points to another file, not the next version
 };
 
 struct versionNode
@@ -26,11 +27,11 @@ class Minigit
 private:
 public:
     Minigit();
-    bool init();
+    void init();
     void add(versionNode *vNode);
     void remove(versionNode *vNode);
-    void commit(versionNode *vNode);
-    void checkOut(fileNode *file);
+    versionNode *commit(versionNode *vNode);
+    versionNode *checkOutCommit(versionNode *vNode);
 };
 
 #endif
